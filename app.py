@@ -1,49 +1,118 @@
+# app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
-# 페이지 설정
-st.set_page_config(page_title="리스크 예측 시스템", layout="wide")
+st.set_page_config(page_title="Risk Dashboard", layout="wide")
 
-st.title("📊 리스크 예측 시스템")
+st.title("🦟 Food Spoilage & Cockroach Risk Dashboard")
 
-st.markdown("데이터를 입력하면 리스크를 간단히 예측합니다.")
+uploaded_file = st.file_uploader("Upload your weather Excel file", type=["xlsx"])
 
-# 사이드바 입력
-st.sidebar.header("입력 변수")
 
-age = st.sidebar.slider("나이", 18, 80, 30)
-income = st.sidebar.number_input("연소득", value=3000)
-credit_score = st.sidebar.slider("신용 점수", 300, 900, 600)
-
-# 예측 버튼
-if st.sidebar.button("예측하기"):
-
-    # 🔹 임시 로직 (나중에 모델로 교체 가능)
-    risk_score = (
-        (80 - age) * 0.2 +
-        (700 - credit_score) * 0.5 +
-        (5000 - income) * 0.0005
-    )
-
-    risk_score = max(0, min(100, risk_score))
-
-    st.subheader("📌 예측 결과")
-
-    if risk_score > 70:
-        st.error(f"⚠️ 고위험 ({risk_score:.2f})")
-    elif risk_score > 40:
-        st.warning(f"⚡ 중위험 ({risk_score:.2f})")
+def cockroach_risk(temp, hum):
+    # Temperature score
+    if temp < 15:
+        t = 0
+    elif temp < 20:
+        t = 0.2
+    elif temp < 25:
+        t = 0.5
+    elif temp < 30:
+        t = 0.9
+    elif temp < 35:
+        t = 1.0
     else:
-        st.success(f"✅ 저위험 ({risk_score:.2f})")
+        t = 0.6
 
-    st.progress(int(risk_score))
+    # Humidity score
+    if hum < 40:
+        h = 0.2
+    elif hum < 60:
+        h = 0.5
+    elif hum < 70:
+        h = 0.8
+    else:
+        h = 1.0
 
-# 데이터 업로드 기능
-st.subheader("📂 데이터 업로드 (선택)")
-uploaded_file = st.file_uploader("CSV 파일 업로드", type=["csv"])
+    return round((t * 0.6 + h * 0.4), 2)
+
+
+def spoilage_risk(temp, hum):
+    # Temperature score
+    if temp < 4:
+        t = 0
+    elif temp < 10:
+        t = 0.2
+    elif temp < 20:
+        t = 0.4
+    elif temp < 45:
+        t = 1.0
+    elif temp < 60:
+        t = 0.7
+    else:
+        t = 0.1
+
+    # Humidity score
+    if hum < 40:
+        h = 0.3
+    elif hum < 60:
+        h = 0.6
+    elif hum < 80:
+        h = 0.9
+    else:
+        h = 1.0
+
+    return round((t * 0.7 + h * 0.3), 2)
+
+
+def level(x):
+    if x >= 0.8:
+        return "High"
+    elif x >= 0.5:
+        return "Medium"
+    else:
+        return "Low"
+
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.write("업로드된 데이터:")
-    st.dataframe(df.head())
+    df = pd.read_excel(uploaded_file)
+
+    # 컬럼 자동 탐지
+    temp_col = [c for c in df.columns if "temp" in c.lower() or "기온" in c][0]
+    hum_col = [c for c in df.columns if "hum" in c.lower() or "습도" in c][0]
+
+    df["Cockroach_Risk"] = df.apply(lambda x: cockroach_risk(x[temp_col], x[hum_col]), axis=1)
+    df["Food_Spoilage_Risk"] = df.apply(lambda x: spoilage_risk(x[temp_col], x[hum_col]), axis=1)
+
+    df["Cockroach_Level"] = df["Cockroach_Risk"].apply(level)
+    df["Spoilage_Level"] = df["Food_Spoilage_Risk"].apply(level)
+
+    st.subheader("📊 Data Preview")
+    st.dataframe(df)
+
+    # 오늘 데이터 강조
+    today = datetime.today().date()
+
+    if "date" in [c.lower() for c in df.columns]:
+        date_col = [c for c in df.columns if "date" in c.lower()][0]
+        df[date_col] = pd.to_datetime(df[date_col]).dt.date
+        today_df = df[df[date_col] == today]
+
+        if not today_df.empty:
+            st.subheader("🚨 Today Risk Alert")
+            c_risk = today_df.iloc[0]["Cockroach_Risk"]
+            f_risk = today_df.iloc[0]["Food_Spoilage_Risk"]
+
+            st.metric("Cockroach Risk", c_risk)
+            st.metric("Food Spoilage Risk", f_risk)
+
+    st.subheader("📈 Risk Trend")
+    st.line_chart(df[["Cockroach_Risk", "Food_Spoilage_Risk"]])
+
+else:
+    st.info("엑셀 파일을 업로드해주세요")
+
+
+
