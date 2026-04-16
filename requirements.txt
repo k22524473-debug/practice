@@ -1,4 +1,7 @@
-streamlit
-pandas
-openpyxl
 
+
+# requirements.txt
+# -----------------
+# streamlit
+# pandas
+# requests
