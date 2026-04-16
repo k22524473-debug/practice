@@ -1,6 +1,7 @@
+
+
 # requirements.txt
-# -----------------
-streamlit
-pandas
-openpyxl
-numpy
+ -----------------
+ streamlit
+ pandas
+ openpyxl
