@@ -1,7 +1,7 @@
 
 
-# requirements.txt
-# -----------------
-# streamlit
-# pandas
-# requests
+requirements.txt
+-----------------
+streamlit
+pandas
+requests
